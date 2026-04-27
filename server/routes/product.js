@@ -13,24 +13,29 @@ const {
 } = require("../controllers/products.controller");
 const verifyAdmin = require("../middleware/verifyAdmin");
 const verifyToken = require("../middleware/verifyToken");
+const validate = require("../middleware/validate");
+const {
+  createProductSchema,
+  updateProductSchema,
+  createReviewSchema,
+  updateReviewSchema,
+} = require("../validators/product.validators");
 
 router
   .route("/")
   .get(getAllProducts)
-  .post(verifyToken, verifyAdmin, createProduct);
+  .post(verifyToken, verifyAdmin, validate(createProductSchema), createProduct);
 
 router
   .route("/:slug")
   .get(getProductBySlug)
-  // .get(getProduct)
-  // .get(getProductByName)
-  .put(verifyToken, verifyAdmin, updateProduct)
+  .put(verifyToken, verifyAdmin, validate(updateProductSchema), updateProduct)
   .delete(verifyToken, verifyAdmin, deleteProduct);
 
 router
   .route("/:id/reviews")
   .get(getProductReviews)
-  .post(verifyToken, createProductReview)
-  .put(verifyToken, updateProductReview);
+  .post(verifyToken, validate(createReviewSchema), createProductReview)
+  .put(verifyToken, validate(updateReviewSchema), updateProductReview);
 
 module.exports = router;

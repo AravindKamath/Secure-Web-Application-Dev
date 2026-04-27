@@ -63,6 +63,17 @@ CREATE TABLE public."resetTokens"
     PRIMARY KEY (id)
 );
 
+CREATE TABLE public.refresh_tokens
+(
+    id SERIAL NOT NULL,
+    user_id integer NOT NULL,
+    token_hash text NOT NULL UNIQUE,
+    expires_at timestamp with time zone NOT NULL,
+    revoked boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE public.reviews
 (
     user_id integer NOT NULL,
@@ -145,6 +156,12 @@ ALTER TABLE public.reviews
     REFERENCES public.users (user_id)
     ON DELETE SET NULL
     NOT VALID;
+
+
+ALTER TABLE public.refresh_tokens
+    ADD FOREIGN KEY (user_id)
+    REFERENCES public.users (user_id)
+    ON DELETE CASCADE;
 
 CREATE UNIQUE INDEX users_unique_lower_email_idx
     ON public.users (lower(email));

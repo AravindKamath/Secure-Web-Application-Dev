@@ -43,10 +43,14 @@ const Register = () => {
         })
         .catch(({ response }) => {
           setIsLoading(false);
-          setError(response.data.message);
+          if (response?.data?.errors && response.data.errors.length > 0) {
+            setError(response.data.errors.map(err => err.message).join(", "));
+          } else {
+            setError(response?.data?.message || "An error occurred");
+          }
         });
     } else {
-      setError("Password doesn't match ");
+      setError("Passwords don't match");
     }
   };
 
@@ -71,8 +75,16 @@ const Register = () => {
               name="username"
               {...register("username", {
                 minLength: {
-                  value: 4,
-                  message: "Username must be greater than 3 characters",
+                  value: 3,
+                  message: "Username must be at least 3 characters",
+                },
+                maxLength: {
+                  value: 30,
+                  message: "Username must be at most 30 characters",
+                },
+                pattern: {
+                  value: /^[a-zA-Z0-9]+$/,
+                  message: "Username must contain only letters and numbers",
                 },
                 required: "Username is required",
               })}
@@ -139,9 +151,13 @@ const Register = () => {
               {...register("password", {
                 required: "Password required",
                 minLength: {
-                  value: 6,
-                  message: "Password must be greater than 5 characters",
+                  value: 8,
+                  message: "Password must be at least 8 characters",
                 },
+                pattern: {
+                  value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])/,
+                  message: "Password must contain at least one uppercase, lowercase, number, and special character",
+                }
               })}
             />
           </div>

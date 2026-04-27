@@ -19,9 +19,16 @@ const UserProvider = ({ children }) => {
   }, [isLoggedIn]);
 
   useEffect(() => {
-    if (localStorage.getItem("token")) {
-      setIsLoggedIn(true);
-      setAuthData(JSON.parse(localStorage.getItem("token")));
+    const storedToken = localStorage.getItem("token");
+    if (storedToken && storedToken !== "undefined") {
+      try {
+        setIsLoggedIn(true);
+        setAuthData(JSON.parse(storedToken));
+      } catch (err) {
+        localStorage.removeItem("token");
+      }
+    } else if (storedToken === "undefined") {
+      localStorage.removeItem("token");
     }
   }, []);
 
@@ -42,10 +49,10 @@ const UserProvider = ({ children }) => {
     const { user, token } = data;
     setIsLoggedIn(true);
     setUserData(user);
-    setAuthData({
-      token,
-    });
-    localStorage.setItem("token", JSON.stringify(token));
+    if (token) {
+      setAuthData({ token });
+      localStorage.setItem("token", JSON.stringify(token));
+    }
   };
 
   const logout = () => {

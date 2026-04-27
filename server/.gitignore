@@ -3,3 +3,9 @@ node_modules
 .vscode
 request.http
 *.rest
+
+# RS256 key pair — NEVER commit private key
+keys/
+
+# Winston rotating log files
+logs/

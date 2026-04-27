@@ -3,25 +3,32 @@ const {
   createAccount,
   loginUser,
   googleLogin,
+  logoutUser,
   forgotPassword,
   verifyResetToken,
   resetPassword,
   refreshToken,
 } = require("../controllers/auth.controller");
+const { authLimiter } = require("../middleware/rateLimiter");
+const validate = require("../middleware/validate");
+const {
+  signupSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  checkTokenSchema,
+  resetPasswordSchema,
+  googleLoginSchema,
+} = require("../validators/auth.validators");
 
-router.post("/signup", createAccount);
+// Apply strict rate limiter to login and signup
+router.post("/signup", authLimiter, validate(signupSchema), createAccount);
+router.post("/login", authLimiter, validate(loginSchema), loginUser);
 
-router.post("/login", loginUser);
-
-router.post("/google", googleLogin);
-
-router.post("/forgot-password", forgotPassword);
-
-// token for reset password
-router.post("/check-token", verifyResetToken);
-
-router.post("/reset-password", resetPassword);
-
+router.post("/google", validate(googleLoginSchema), googleLogin);
+router.post("/logout", logoutUser);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.post("/check-token", validate(checkTokenSchema), verifyResetToken);
+router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 router.post("/refresh-token", refreshToken);
 
 module.exports = router;

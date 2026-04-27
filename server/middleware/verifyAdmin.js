@@ -1,14 +1,28 @@
+/**
+ * verifyAdmin.js
+ * RBAC middleware — permits only users with the "admin" role.
+ *
+ * Must be chained after verifyToken so req.user is populated.
+ * Returns 403 Forbidden (not 401) for insufficient privilege.
+ */
 const { ErrorHandler } = require("../helpers/error");
+const { logger } = require("../utils/logger");
 
 module.exports = (req, res, next) => {
-  const { roles } = req.user;
+  const { roles, id } = req.user;
+
   if (roles && roles.includes("admin")) {
-    req.user = {
-      ...req.user,
-      roles,
-    };
     return next();
-  } else {
-    throw new ErrorHandler(401, "require admin role");
   }
+
+  logger.warn({
+    event: "RBAC_FAILURE",
+    userId: id,
+    roles,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+  });
+
+  throw new ErrorHandler(403, "Forbidden: admin role required");
 };

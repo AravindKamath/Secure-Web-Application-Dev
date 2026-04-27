@@ -65,7 +65,12 @@ const Login = () => {
       }, 1500);
     } catch (error) {
       setIsLoading(false);
-      setError(error.response?.data.message);
+      const res = error.response;
+      if (res?.data?.errors && res.data.errors.length > 0) {
+        setError(res.data.errors.map(err => err.message).join(", "));
+      } else {
+        setError(res?.data?.message || "An error occurred");
+      }
     }
   };
 

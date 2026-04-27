@@ -1,3 +1,14 @@
+/**
+ * auth.service.js
+ * Handles all authentication business logic.
+ *
+ * Security controls:
+ * - RS256 algorithm for all JWT signing (access + refresh)
+ * - Access token: 15-minute expiry
+ * - Refresh token: 7-day expiry, stored as SHA-256 hash in DB for rotation
+ * - bcrypt cost factor 12 for all password operations
+ * - Structured audit logging for all auth events
+ */
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const {
@@ -6,8 +17,13 @@ const {
   deleteResetTokenDb,
   isValidTokenDb,
 } = require("../db/auth.db");
-const validateUser = require("../helpers/validateUser");
+const {
+  storeRefreshTokenDb,
+  revokeRefreshTokenDb,
+  isValidRefreshTokenDb,
+} = require("../db/refreshToken.db");
 const { ErrorHandler } = require("../helpers/error");
+const { hashPassword } = require("../helpers/hashPassword");
 const { changeUserPasswordDb } = require("../db/user.db");
 const {
   getUserByEmailDb,
@@ -21,304 +37,288 @@ const { OAuth2Client } = require("google-auth-library");
 const crypto = require("crypto");
 const moment = require("moment");
 const { logger } = require("../utils/logger");
-let curDate = moment().format();
+const { getPrivateKey, getPublicKey } = require("../utils/keyManager");
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
+
+const BCRYPT_ROUNDS = 12;
+
+/**
+ * Validate email format and minimum password length (Joi handles full complexity,
+ * this is a service-layer sanity guard).
+ */
+const isBasicInputValid = (email, password) => {
+  const validEmail = typeof email === "string" && /\S+@\S+\.\S+/.test(email.trim());
+  const validPassword = typeof password === "string" && password.trim().length >= 8;
+  return validEmail && validPassword;
+};
+
+// ── AuthService ─────────────────────────────────────────────────────────────
 
 class AuthService {
+  // ── Sign-up ──────────────────────────────────────────────────────────────
+
   async signUp(user) {
-    try {
-      const { password, email, fullname, username } = user;
-      if (!email || !password || !fullname || !username) {
-        throw new ErrorHandler(401, "all fields required");
-      }
+    const { password, email, fullname, username } = user;
 
-      if (validateUser(email, password)) {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const userByEmail = await getUserByEmailDb(email);
-        const userByUsername = await getUserByUsernameDb(username);
-
-        if (userByEmail) {
-          throw new ErrorHandler(401, "email taken already");
-        }
-
-        if (userByUsername) {
-          throw new ErrorHandler(401, "username taken already");
-        }
-
-        const newUser = await createUserDb({
-          ...user,
-          password: hashedPassword,
-        });
-
-        const { id: cart_id } = await createCartDb(newUser.user_id);
-        const token = await this.signToken({
-          id: newUser.user_id,
-          roles: newUser.roles,
-          cart_id,
-        });
-        const refreshToken = await this.signRefreshToken({
-          id: newUser.user_id,
-          roles: newUser.roles,
-          cart_id,
-        });
-
-        return {
-          token,
-          refreshToken,
-          user: {
-            user_id: newUser.user_id,
-            fullname: newUser.fullname,
-            username: newUser.username,
-            email: newUser.email,
-          },
-        };
-      } else {
-        throw new ErrorHandler(401, "Input validation error");
-      }
-    } catch (error) {
-      throw new ErrorHandler(error.statusCode, error.message);
+    if (!email || !password || !fullname || !username) {
+      logger.warn({ event: "SIGNUP_FAILURE", reason: "Missing required fields", email });
+      throw new ErrorHandler(400, "All fields are required");
     }
-  }
 
-  async login(email, password) {
-    try {
-      if (!validateUser(email, password)) {
-        throw new ErrorHandler(403, "Invalid login");
-      }
-
-      const user = await getUserByEmailDb(email);
-
-      if (!user) {
-        throw new ErrorHandler(403, "Email or password incorrect.");
-      }
-
-      if (user.google_id && !user.password) {
-        throw new ErrorHandler(403, "Login in with Google");
-      }
-
-      const {
-        password: dbPassword,
-        user_id,
-        roles,
-        cart_id,
-        fullname,
-        username,
-      } = user;
-      const isCorrectPassword = await bcrypt.compare(password, dbPassword);
-
-      if (!isCorrectPassword) {
-        throw new ErrorHandler(403, "Email or password incorrect.");
-      }
-
-      const token = await this.signToken({ id: user_id, roles, cart_id });
-      const refreshToken = await this.signRefreshToken({
-        id: user_id,
-        roles,
-        cart_id,
-      });
-      return {
-        token,
-        refreshToken,
-        user: {
-          user_id,
-          fullname,
-          username,
-        },
-      };
-    } catch (error) {
-      throw new ErrorHandler(error.statusCode, error.message);
+    if (!isBasicInputValid(email, password)) {
+      logger.warn({ event: "SIGNUP_FAILURE", reason: "Invalid email or password format", email });
+      throw new ErrorHandler(400, "Invalid email or password format");
     }
-  }
 
-  async googleLogin(code) {
-    try {
-      const ticket = await this.verifyGoogleIdToken(code);
-      const { name, email, sub } = ticket.getPayload();
-      const defaultUsername = name.replace(/ /g, "").toLowerCase();
-
-      try {
-        const user = await getUserByEmailDb(email);
-        if (!user?.google_id) {
-          const user = await createUserGoogleDb({
-            sub,
-            defaultUsername,
-            email,
-            name,
-          });
-          await createCartDb(user.user_id);
-          await mail.signupMail(user.email, user.fullname.split(" ")[0]);
-        }
-        const { user_id, cart_id, roles, fullname, username } =
-          await getUserByEmailDb(email);
-
-        const token = await this.signToken({
-          id: user_id,
-          roles,
-          cart_id,
-        });
-
-        const refreshToken = await this.signRefreshToken({
-          id: user_id,
-          roles,
-          cart_id,
-        });
-
-        return {
-          token,
-          refreshToken,
-          user: {
-            user_id,
-            fullname,
-            username,
-          },
-        };
-      } catch (error) {
-        throw new ErrorHandler(error.statusCode, error.message);
-      }
-    } catch (error) {
-      throw new ErrorHandler(401, error.message);
+    const userByEmail = await getUserByEmailDb(email);
+    if (userByEmail) {
+      logger.warn({ event: "SIGNUP_FAILURE", reason: "Email already taken", email });
+      throw new ErrorHandler(409, "Email is already registered");
     }
-  }
 
-  async generateRefreshToken(data) {
-    const payload = await this.verifyRefreshToken(data);
+    const userByUsername = await getUserByUsernameDb(username);
+    if (userByUsername) {
+      logger.warn({ event: "SIGNUP_FAILURE", reason: "Username already taken", username });
+      throw new ErrorHandler(409, "Username is already taken");
+    }
 
-    const token = await this.signToken(payload);
-    const refreshToken = await this.signRefreshToken(payload);
+    const hashedPassword = await hashPassword(password);
+    const newUser = await createUserDb({ ...user, password: hashedPassword });
+    const { id: cart_id } = await createCartDb(newUser.user_id);
+
+    const tokenPayload = { id: newUser.user_id, roles: newUser.roles, cart_id };
+    const token = this.signAccessToken(tokenPayload);
+    const { rawToken: refreshToken, expiresAt } = this.signRefreshTokenRaw(tokenPayload);
+
+    await storeRefreshTokenDb({
+      userId: newUser.user_id,
+      rawToken: refreshToken,
+      expiresAt,
+    });
+
+    logger.info({ event: "SIGNUP_SUCCESS", userId: newUser.user_id, email: newUser.email });
 
     return {
       token,
       refreshToken,
+      user: {
+        user_id: newUser.user_id,
+        fullname: newUser.fullname,
+        username: newUser.username,
+        email: newUser.email,
+      },
     };
   }
 
+  // ── Login ─────────────────────────────────────────────────────────────────
+
+  async login(email, password) {
+    if (!isBasicInputValid(email, password)) {
+      logger.warn({ event: "LOGIN_FAILURE", reason: "Invalid input format", email });
+      throw new ErrorHandler(401, "Invalid credentials");
+    }
+
+    const user = await getUserByEmailDb(email);
+    if (!user) {
+      // Constant-time guard: hash anyway to prevent timing attacks
+      await bcrypt.hash(password, BCRYPT_ROUNDS);
+      logger.warn({ event: "LOGIN_FAILURE", reason: "Email not found", email });
+      throw new ErrorHandler(401, "Email or password incorrect");
+    }
+
+    if (user.google_id && !user.password) {
+      logger.warn({ event: "LOGIN_FAILURE", reason: "Google-only account", email });
+      throw new ErrorHandler(403, "Please log in with Google");
+    }
+
+    const { password: dbPassword, user_id, roles, cart_id, fullname, username } = user;
+    const isCorrectPassword = await bcrypt.compare(password, dbPassword);
+
+    if (!isCorrectPassword) {
+      logger.warn({ event: "LOGIN_FAILURE", reason: "Wrong password", userId: user_id });
+      throw new ErrorHandler(401, "Email or password incorrect");
+    }
+
+    const tokenPayload = { id: user_id, roles, cart_id };
+    const token = this.signAccessToken(tokenPayload);
+    const { rawToken: refreshToken, expiresAt } = this.signRefreshTokenRaw(tokenPayload);
+
+    await storeRefreshTokenDb({ userId: user_id, rawToken: refreshToken, expiresAt });
+
+    logger.info({ event: "LOGIN_SUCCESS", userId: user_id });
+
+    return {
+      token,
+      refreshToken,
+      user: { user_id, fullname, username },
+    };
+  }
+
+  // ── Google Login ──────────────────────────────────────────────────────────
+
+  async googleLogin(code) {
+    const ticket = await this.verifyGoogleIdToken(code);
+    const { name, email, sub } = ticket.getPayload();
+    const defaultUsername = name.replace(/ /g, "").toLowerCase();
+
+    let user = await getUserByEmailDb(email);
+
+    if (!user?.google_id) {
+      user = await createUserGoogleDb({ sub, defaultUsername, email, name });
+      await createCartDb(user.user_id);
+      await mail.signupMail(user.email, user.fullname.split(" ")[0]);
+    }
+
+    const { user_id, cart_id, roles, fullname, username } = await getUserByEmailDb(email);
+
+    const tokenPayload = { id: user_id, roles, cart_id };
+    const token = this.signAccessToken(tokenPayload);
+    const { rawToken: refreshToken, expiresAt } = this.signRefreshTokenRaw(tokenPayload);
+
+    await storeRefreshTokenDb({ userId: user_id, rawToken: refreshToken, expiresAt });
+
+    logger.info({ event: "GOOGLE_LOGIN_SUCCESS", userId: user_id });
+
+    return { token, refreshToken, user: { user_id, fullname, username } };
+  }
+
+  // ── Refresh Token Rotation ────────────────────────────────────────────────
+
+  async generateRefreshToken(rawRefreshToken) {
+    // 1. Verify JWT signature
+    let payload;
+    try {
+      payload = jwt.verify(rawRefreshToken, getPublicKey(), { algorithms: ["RS256"] });
+    } catch (err) {
+      logger.warn({ event: "REFRESH_FAILURE", reason: "JWT verification failed", err: err.message });
+      throw new ErrorHandler(401, "Invalid or expired refresh token");
+    }
+
+    // 2. Check DB — must exist, not revoked, not expired
+    const isValid = await isValidRefreshTokenDb(rawRefreshToken);
+    if (!isValid) {
+      logger.warn({
+        event: "REFRESH_FAILURE",
+        reason: "Token revoked or not found in DB",
+        userId: payload.id,
+      });
+      throw new ErrorHandler(401, "Refresh token has been revoked");
+    }
+
+    // 3. Revoke the consumed token (rotation)
+    await revokeRefreshTokenDb(rawRefreshToken);
+
+    // 4. Issue a new pair
+    const tokenPayload = { id: payload.id, roles: payload.roles, cart_id: payload.cart_id };
+    const token = this.signAccessToken(tokenPayload);
+    const { rawToken: newRefreshToken, expiresAt } = this.signRefreshTokenRaw(tokenPayload);
+
+    await storeRefreshTokenDb({
+      userId: payload.id,
+      rawToken: newRefreshToken,
+      expiresAt,
+    });
+
+    logger.info({ event: "REFRESH_SUCCESS", userId: payload.id });
+
+    return { token, refreshToken: newRefreshToken };
+  }
+
+  // ── Forgot Password ────────────────────────────────────────────────────────
+
   async forgotPassword(email) {
     const user = await getUserByEmailDb(email);
-
-    if (user) {
-      try {
-        await setTokenStatusDb(email);
-
-        //Create a random reset token
-        var fpSalt = crypto.randomBytes(64).toString("base64");
-
-        //token expires after one hour
-        var expireDate = moment().add(1, "h").format();
-
-        await createResetTokenDb({ email, expireDate, fpSalt });
-
-        await mail.forgotPasswordMail(fpSalt, email);
-      } catch (error) {
-        throw new ErrorHandler(error.statusCode, error.message);
-      }
-    } else {
-      throw new ErrorHandler(400, "Email not found");
+    if (!user) {
+      // Don't reveal whether the email exists — log and silently succeed
+      logger.warn({ event: "FORGOT_PASSWORD_NOTFOUND", email });
+      return;
     }
+
+    await setTokenStatusDb(email);
+    const fpSalt = crypto.randomBytes(64).toString("base64");
+    const expireDate = moment().add(1, "h").format();
+    await createResetTokenDb({ email, expireDate, fpSalt });
+    await mail.forgotPasswordMail(fpSalt, email);
+
+    logger.info({ event: "FORGOT_PASSWORD_SENT", email });
   }
+
+  // ── Verify Reset Token ─────────────────────────────────────────────────────
 
   async verifyResetToken(token, email) {
-    try {
-      await deleteResetTokenDb(curDate);
-      const isTokenValid = await isValidTokenDb({
-        token,
-        email,
-        curDate,
-      });
-
-      return isTokenValid;
-    } catch (error) {
-      throw new ErrorHandler(error.statusCode, error.message);
-    }
+    const curDate = moment().format();
+    await deleteResetTokenDb(curDate);
+    return await isValidTokenDb({ token, email, curDate });
   }
+
+  // ── Reset Password ─────────────────────────────────────────────────────────
 
   async resetPassword(password, password2, token, email) {
-    const isValidPassword =
-      typeof password === "string" && password.trim().length >= 6;
-
+    // password matching is enforced by Joi schema; guard here for service safety
     if (password !== password2) {
-      throw new ErrorHandler(400, "Password do not match.");
+      throw new ErrorHandler(400, "Passwords do not match");
     }
 
-    if (!isValidPassword) {
-      throw new ErrorHandler(
-        400,
-        "Password length must be at least 6 characters"
-      );
+    const curDate = moment().format();
+    const isTokenValid = await isValidTokenDb({ token, email, curDate });
+
+    if (!isTokenValid) {
+      logger.warn({ event: "RESET_PASSWORD_FAILURE", reason: "Invalid or expired token", email });
+      throw new ErrorHandler(400, "Token not found. Please initiate password reset again.");
     }
 
-    try {
-      const isTokenValid = await isValidTokenDb({
-        token,
-        email,
-        curDate,
-      });
+    await setTokenStatusDb(email);
+    const hashedPassword = await hashPassword(password);
+    await changeUserPasswordDb(hashedPassword, email);
+    await mail.resetPasswordMail(email);
 
-      if (!isTokenValid)
-        throw new ErrorHandler(
-          400,
-          "Token not found. Please try the reset password process again."
-        );
-
-      await setTokenStatusDb(email);
-
-      const salt = await bcrypt.genSalt();
-      const hashedPassword = await bcrypt.hash(password, salt);
-
-      await changeUserPasswordDb(hashedPassword, email);
-      await mail.resetPasswordMail(email);
-    } catch (error) {
-      throw new ErrorHandler(error.statusCode, error.message);
-    }
+    logger.info({ event: "RESET_PASSWORD_SUCCESS", email });
   }
 
+  // ── Google OAuth helper ────────────────────────────────────────────────────
+
   async verifyGoogleIdToken(code) {
-    // https://github.com/MomenSherif/react-oauth/issues/12#issuecomment-1131408898
     const oauthClient = new OAuth2Client(
       process.env.OAUTH_CLIENT_ID,
       process.env.OAUTH_CLIENT_SECRET,
       "postmessage"
     );
     const { tokens } = await oauthClient.getToken(code);
-
     const ticket = await oauthClient.verifyIdToken({
       idToken: tokens.id_token,
       audience: process.env.OAUTH_CLIENT_ID,
     });
-
     return ticket;
   }
 
-  async signToken(data) {
-    try {
-      return jwt.sign(data, process.env.SECRET, { expiresIn: "60s" });
-    } catch (error) {
-      logger.error(error);
-      throw new ErrorHandler(500, "An error occurred");
-    }
+  // ── Token signing ──────────────────────────────────────────────────────────
+
+  /**
+   * Sign a short-lived RS256 access token (15 minutes).
+   * @param {object} data — { id, roles, cart_id }
+   * @returns {string} signed JWT
+   */
+  signAccessToken(data) {
+    return jwt.sign(data, getPrivateKey(), {
+      algorithm: "RS256",
+      expiresIn: "15m",
+    });
   }
 
-  async signRefreshToken(data) {
-    try {
-      return jwt.sign(data, process.env.REFRESH_SECRET, { expiresIn: "1h" });
-    } catch (error) {
-      logger.error(error);
-      throw new ErrorHandler(500, error.message);
-    }
-  }
-
-  async verifyRefreshToken(token) {
-    try {
-      const payload = jwt.verify(token, process.env.REFRESH_SECRET);
-      return {
-        id: payload.id,
-        roles: payload.roles,
-        cart_id: payload.cart_id,
-      };
-    } catch (error) {
-      logger.error(error);
-      throw new ErrorHandler(500, error.message);
-    }
+  /**
+   * Sign a long-lived RS256 refresh token (7 days).
+   * Returns both the raw token and its expiry Date for DB storage.
+   * @param {object} data — { id, roles, cart_id }
+   * @returns {{ rawToken: string, expiresAt: Date }}
+   */
+  signRefreshTokenRaw(data) {
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const rawToken = jwt.sign(data, getPrivateKey(), {
+      algorithm: "RS256",
+      expiresIn: "7d",
+    });
+    return { rawToken, expiresAt };
   }
 }
 

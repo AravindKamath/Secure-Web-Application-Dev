@@ -7,15 +7,7 @@ const API = axios.create({
   withCredentials: true,
 });
 
-API.interceptors.request.use(
-  function (req) {
-    const token = JSON.parse(localStorage.getItem("token"));
-    if (token) req.headers["auth-token"] = token;
-    return req;
-  },
-  function (error) {
-    return Promise.reject(error);
-  }
-);
+// Authentication is handled via HttpOnly cookies (withCredentials: true),
+// so we no longer need to manually attach an auth-token header.
 
 export default API;
