@@ -10,10 +10,6 @@ A full-stack e-commerce project built with Postgres, Express, React and Node.
 
 [Documentation](https://pern-store.onrender.com/api/docs/)
 
-## Demo
-
-[Run demo](https://pern-store.netlify.app)
-
 ## Screenshots
 
 ![Homepage Screen Shot](https://user-images.githubusercontent.com/51405947/104136952-a3509100-5399-11eb-94a6-0f9b07fbf1a2.png)
@@ -160,10 +156,3 @@ To run this project, you will need to add the following environment variables to
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## Feedback
-
-Joseph Odunsi - [@odunsi](https://twitter.com/_odunsi_) - odunsiolakunbi@gmail.com
-
-Project Link: [https://github.com/dhatguy/PERN-Store](https://github.com/dhatguy/PERN-Store)
-
-Demo Link: [https://pern-store.netlify.app](https://pern-store.netlify.app)
