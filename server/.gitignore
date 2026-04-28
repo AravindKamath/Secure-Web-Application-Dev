@@ -6,6 +6,8 @@ request.http
 
 # RS256 key pair — NEVER commit private key
 keys/
+*.pem
+*.key
 
 # Winston rotating log files
 logs/

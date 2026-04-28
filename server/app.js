@@ -46,7 +46,20 @@ app.use(
 );
 
 // ── CORS ────────────────────────────────────────────────────────────────────
-app.use(cors({ credentials: true, origin: true }));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001")
+  .split(",")
+  .map((o) => o.trim());
+
+app.use(cors({
+  credentials: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error("Not allowed by CORS"));
+  },
+}));
 
 // ── Body parsing ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10kb" })); // Limit payload size

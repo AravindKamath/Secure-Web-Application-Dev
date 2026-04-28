@@ -1,0 +1,30 @@
+# ── Secrets & Keys ──────────────────────────────────────
+*.env
+*.env.*
+!.env.example
+!*.env.example
+keys/
+*.pem
+*.key
+
+# ── Terraform state (contains secrets) ─────────────────
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# ── IDE / OS ────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# ── Logs ────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Node ────────────────────────────────────────────────
+node_modules/
+
+# ── Docker data volume ─────────────────────────────────
+/db/

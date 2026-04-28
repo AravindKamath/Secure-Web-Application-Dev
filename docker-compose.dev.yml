@@ -49,9 +49,7 @@ services:
     restart: always
     env_file:
       - ./server/.env
-    environment:
-      # other environment variables is in ./server/.env file
-      - POSTGRES_PASSWORD=adminuser
+    # All secrets loaded from ./server/.env — do NOT hardcode credentials here
     ports:
       - 7890:5432
     volumes:
@@ -64,9 +62,9 @@ services:
       - pernstore
   pgadmin:
     image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: "admin@mail.com"
-      PGADMIN_DEFAULT_PASSWORD: "adminpassword"
+    env_file:
+      - ./pgadmin.env
+    # Create pgadmin.env with PGADMIN_DEFAULT_EMAIL and PGADMIN_DEFAULT_PASSWORD
     ports:
       - "16543:80"
     depends_on:

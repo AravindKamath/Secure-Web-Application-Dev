@@ -10,11 +10,7 @@ services:
     # restart: always
     env_file:
       - ./server/.env
-    environment:
-      - POSTGRES_HOST=3.84.191.228
-      - POSTGRES_DB=pernstore
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=newpassword
+    # All secrets loaded from ./server/.env — do NOT hardcode credentials here
     volumes:
       # Maps the server directory to
       # the working directory in the container
@@ -49,26 +45,20 @@ services:
       - pernstore
   # database:
   #   container_name: pern-store-db
-  #   image: postgres
+  #   image: postgres:16
   #   restart: always
   #   env_file:
   #     - ./server/.env
-  #   environment:
-  #     # other environment variables is in ./server/.env file
-  #     - POSTGRES_PASSWORD=adminuser
+  #   # All secrets loaded from ./server/.env — do NOT hardcode credentials here
   #   ports:
   #     - 7890:5432
   #   volumes:
   #     - ./db:/var/lib/postgresql/data
-  #     # When the PostgreSQL container is started it will run any scripts
-  #     # provided in the `docker-entrypoint-initdb.d` directory
-  #     # seed the database with the init.sql file
   #     - ./server/config/init.sql:/docker-entrypoint-initdb.d/init.sql
   # pgadmin:
   #   image: dpage/pgadmin4
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: "dhatguy@mail.com"
-  #     PGADMIN_DEFAULT_PASSWORD: "qwertyuiop"
+  #   env_file:
+  #     - ./pgadmin.env
   #   ports:
   #     - "16543:80"
   #   depends_on:

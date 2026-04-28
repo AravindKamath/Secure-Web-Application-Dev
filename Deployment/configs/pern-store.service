@@ -1,0 +1,68 @@
+# ── pern-store.service ───────────────────────────────────────────────────────
+# systemd unit for the PERN-Store Node.js API
+#
+# Install: sudo cp pern-store.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now pern-store
+#
+# Sandboxing:
+#   - NoNewPrivileges: prevents privilege escalation
+#   - ProtectSystem=strict: read-only filesystem except ReadWritePaths
+#   - ProtectHome=yes: /home is inaccessible
+#   - PrivateTmp: isolated /tmp namespace
+# ──────────────────────────────────────────────────────────────────────────────
+
+[Unit]
+Description=PERN-Store Node.js API Server
+Documentation=https://github.com/Boora-Raman/PERN-Store
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=pernstore
+Group=pernstore
+
+# ── Working directory and entry point ────────────────────────────────────────
+WorkingDirectory=/opt/pern-store/server
+ExecStart=/usr/bin/node index.js
+
+# ── Environment ──────────────────────────────────────────────────────────────
+EnvironmentFile=/opt/pern-store/server/.env
+Environment=NODE_ENV=production
+
+# ── Restart policy ───────────────────────────────────────────────────────────
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# ── Security sandboxing ─────────────────────────────────────────────────────
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+
+# ── Writable paths (logs and RSA keys) ──────────────────────────────────────
+ReadWritePaths=/opt/pern-store/server/logs /opt/pern-store/server/keys
+
+# ── Resource limits ──────────────────────────────────────────────────────────
+LimitNOFILE=65535
+MemoryMax=512M
+CPUQuota=80%
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pern-store
+
+[Install]
+WantedBy=multi-user.target
