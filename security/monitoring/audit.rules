@@ -1,0 +1,180 @@
+###############################################################################
+# audit.rules — Linux auditd Rules for PERN-Store Data Zone Protection
+#
+# Purpose: Monitor unauthorized file changes, privilege escalation, and
+#          suspicious activity with focus on the Data Zone (PostgreSQL).
+#
+# Installation:
+#   1. Copy to:    /etc/audit/rules.d/pern-store.rules
+#   2. Load rules: sudo augenrules --load
+#   3. Verify:     sudo auditctl -l
+#
+# Log location:  /var/log/audit/audit.log
+# Search logs:   ausearch -k <key_name>
+# Reports:       aureport --summary
+#
+# Architecture: PERN-Store three-zone Docker deployment
+###############################################################################
+
+# ── Clean slate ──────────────────────────────────────────────────────────────
+-D
+-b 8192
+-f 1
+
+###############################################################################
+# DATA ZONE — PostgreSQL Integrity Monitoring
+###############################################################################
+
+# Monitor PostgreSQL data volume for any write operations
+-w /var/lib/docker/volumes/pern-store_pgdata/_data/ -p wa -k datazone_pgdata_write
+
+# Monitor database initialization scripts (should be immutable)
+-w /var/lib/docker/volumes/pern-store_pgdata/_data/postgresql.conf -p wa -k datazone_pg_config
+-w /var/lib/docker/volumes/pern-store_pgdata/_data/pg_hba.conf -p wa -k datazone_pg_hba
+-w /var/lib/docker/volumes/pern-store_pgdata/_data/pg_ident.conf -p wa -k datazone_pg_ident
+
+###############################################################################
+# APPLICATION ZONE — Node.js API Monitoring
+###############################################################################
+
+# Monitor application source code changes
+-w /opt/pern-store/server/ -p wa -k appzone_source_change
+
+# Monitor environment files (secrets)
+-w /opt/pern-store/server/.env.production -p rwa -k appzone_env_access
+-w /opt/pern-store/server/.env.production.local -p rwa -k appzone_env_access
+
+# Monitor RSA private keys
+-w /opt/pern-store/server/keys/ -p rwa -k appzone_key_access
+
+# Monitor application configuration changes
+-w /opt/pern-store/server/config/ -p wa -k appzone_config_change
+
+###############################################################################
+# DMZ (WEB ZONE) — Nginx Monitoring
+###############################################################################
+
+# Monitor Nginx configuration changes
+-w /etc/nginx/ -p wa -k dmz_nginx_config
+
+# Monitor static content changes
+-w /var/www/html/ -p wa -k dmz_static_content
+
+# Monitor TLS certificate changes
+-w /etc/nginx/ssl/ -p wa -k dmz_tls_certs
+-w /etc/letsencrypt/ -p wa -k dmz_tls_certs
+
+###############################################################################
+# DOCKER RUNTIME — Container Security
+###############################################################################
+
+# Monitor Docker daemon configuration
+-w /etc/docker/ -p wa -k docker_config
+
+# Monitor Docker socket access (container escape vector)
+-w /var/run/docker.sock -p rwa -k docker_socket_access
+
+# Monitor Docker binary modifications
+-w /usr/bin/docker -p wa -k docker_binary
+-w /usr/bin/docker-compose -p wa -k docker_binary
+-w /usr/bin/containerd -p wa -k docker_binary
+-w /usr/bin/runc -p wa -k docker_binary
+
+# Monitor docker-compose production file
+-w /opt/pern-store/docker-compose.prod.yml -p wa -k docker_compose_change
+
+###############################################################################
+# SYSTEM SECURITY — Privilege Escalation & Access Control
+###############################################################################
+
+# Monitor user and group changes
+-w /etc/passwd -p wa -k identity_change
+-w /etc/shadow -p wa -k identity_change
+-w /etc/group -p wa -k identity_change
+-w /etc/gshadow -p wa -k identity_change
+
+# Monitor sudoers changes
+-w /etc/sudoers -p wa -k sudoers_change
+-w /etc/sudoers.d/ -p wa -k sudoers_change
+
+# Monitor SSH configuration
+-w /etc/ssh/sshd_config -p wa -k ssh_config_change
+-w /root/.ssh/ -p rwa -k ssh_key_access
+
+# Monitor PAM configuration
+-w /etc/pam.d/ -p wa -k pam_config_change
+
+# Monitor login/logout events
+-w /var/log/lastlog -p wa -k login_events
+-w /var/log/faillog -p wa -k login_events
+-w /var/log/wtmp -p wa -k login_events
+-w /var/log/btmp -p wa -k login_events
+
+###############################################################################
+# NETWORK CONFIGURATION — Segmentation Integrity
+###############################################################################
+
+# Monitor firewall rule changes
+-w /etc/ufw/ -p wa -k firewall_change
+-a always,exit -F arch=b64 -S sethostname -S setdomainname -k network_change
+
+# Monitor iptables/nftables changes (Docker uses iptables for network isolation)
+-w /sbin/iptables -p x -k iptables_exec
+-w /sbin/ip6tables -p x -k iptables_exec
+-w /sbin/nft -p x -k nftables_exec
+
+# Monitor network configuration files
+-w /etc/hosts -p wa -k network_config
+-w /etc/resolv.conf -p wa -k network_config
+-w /etc/network/ -p wa -k network_config
+
+###############################################################################
+# KERNEL & SYSTEM INTEGRITY
+###############################################################################
+
+# Monitor kernel module loading (rootkit detection)
+-w /sbin/insmod -p x -k kernel_module
+-w /sbin/rmmod -p x -k kernel_module
+-w /sbin/modprobe -p x -k kernel_module
+-a always,exit -F arch=b64 -S init_module -S delete_module -k kernel_module
+
+# Monitor cron jobs (persistence mechanism)
+-w /etc/crontab -p wa -k cron_change
+-w /etc/cron.d/ -p wa -k cron_change
+-w /etc/cron.daily/ -p wa -k cron_change
+-w /etc/cron.hourly/ -p wa -k cron_change
+-w /var/spool/cron/ -p wa -k cron_change
+
+# Monitor systemd service changes
+-w /etc/systemd/system/ -p wa -k systemd_change
+-w /lib/systemd/system/ -p wa -k systemd_change
+
+# Monitor time changes (anti-forensics detection)
+-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time_change
+-a always,exit -F arch=b64 -S clock_settime -k time_change
+-w /etc/localtime -p wa -k time_change
+
+###############################################################################
+# SUSPICIOUS ACTIVITY DETECTION
+###############################################################################
+
+# Monitor use of privilege escalation commands
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/sudo -k priv_escalation
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/su -k priv_escalation
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/pkexec -k priv_escalation
+
+# Monitor file deletion events (anti-forensics)
+-a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -k file_deletion
+
+# Monitor unsuccessful access attempts (reconnaissance)
+-a always,exit -F arch=b64 -S open -S openat -F exit=-EACCES -k access_denied
+-a always,exit -F arch=b64 -S open -S openat -F exit=-EPERM -k access_denied
+
+# Monitor mount operations (data exfiltration vector)
+-a always,exit -F arch=b64 -S mount -S umount2 -k mount_operations
+
+###############################################################################
+# IMMUTABLE MODE — Lock rules after loading (prevents runtime tampering)
+###############################################################################
+# Uncomment the following line in production after all rules are verified:
+# -e 2
