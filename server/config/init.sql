@@ -26,7 +26,8 @@ CREATE TABLE public.order_item
 
 CREATE TYPE "payment" AS ENUM (
   'PAYSTACK',
-  'STRIPE'
+  'STRIPE',
+  'RAZORPAY'
 );
 
 CREATE TABLE public.orders

@@ -12,8 +12,6 @@
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
-    "@stripe/react-stripe-js": "^2.4.0",
-    "@stripe/stripe-js": "^2.2.2",
     "@windmill/react-ui": "^0.6.0",
     "axios": "^1.6.2",
     "date-fns": "^3.0.6",
@@ -25,7 +23,6 @@
     "react-helmet-async": "^2.0.4",
     "react-hook-form": "^7.49.2",
     "react-hot-toast": "^2.4.1",
-    "react-paystack": "^4.0.3",
     "react-rating-stars-component": "^2.2.0",
     "react-router-dom": "^6.21.1",
     "react-spinners": "^0.13.8"

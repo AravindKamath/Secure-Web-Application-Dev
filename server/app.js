@@ -27,10 +27,10 @@ app.use(
         imgSrc: ["'self'", "data:", "https:"],
         connectSrc: [
           "'self'",
-          "https://api.stripe.com",
+          "https://lumberjack.razorpay.com",
           "https://accounts.google.com",
         ],
-        frameSrc: ["'none'"],
+        frameSrc: ["https://api.razorpay.com"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
       },

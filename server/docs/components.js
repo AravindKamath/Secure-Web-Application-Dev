@@ -197,7 +197,7 @@ module.exports = {
           itemTotal: {
             type: "integer",
           },
-          stripePaymentId: {
+          paymentId: {
             type: "string",
           },
         },

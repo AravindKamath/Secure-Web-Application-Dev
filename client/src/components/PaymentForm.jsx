@@ -1,72 +1,93 @@
-import { CardElement, Elements, ElementsConsumer } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
 import { Button, HelperText } from "@windmill/react-ui";
 import API from "api/axios.config";
 import { useCart } from "context/CartContext";
+import { useUser } from "context/UserContext";
 import { formatCurrency } from "helpers/formatCurrency";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import PulseLoader from "react-spinners/PulseLoader";
 import OrderService from "services/order.service";
 import OrderSummary from "./OrderSummary";
-import PaystackBtn from "./PaystackBtn";
 
 const PaymentForm = ({ previousStep, addressData, nextStep }) => {
   const { cartSubtotal, cartTotal, cartData, setCartData } = useCart();
+  const { userData } = useUser();
   const [error, setError] = useState();
   const [isProcessing, setIsProcessing] = useState(false);
-  const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUB_KEY);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e, elements, stripe) => {
-    e.preventDefault();
+  const handlePayment = async () => {
     setError();
-    const { fullname, email, address, city, state } = addressData;
-    if (!stripe || !elements) {
-      return;
-    }
+    setIsProcessing(true);
+
     try {
-      setIsProcessing(true);
-      const { data } = await API.post("/payment", {
+      // Step 1: Create Razorpay order on the backend
+      const { data: order } = await API.post("/payment/order", {
         amount: (cartSubtotal * 100).toFixed(),
-        email,
+        currency: "INR",
       });
 
-      const card = elements.getElement(CardElement);
-      const result = await stripe.createPaymentMethod({
-        type: "card",
-        card,
-        billing_details: {
-          name: fullname,
-          email,
-          address: {
-            city,
-            line1: address,
-            state,
-            country: "NG", // TODO: change later
+      // Step 2: Configure Razorpay Checkout options
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "PERN Store",
+        description: "Order Payment",
+        order_id: order.id,
+        prefill: {
+          name: addressData?.fullname || "",
+          email: addressData?.email || userData?.email || "",
+        },
+        handler: async (response) => {
+          try {
+            // Step 3: Verify payment signature on the backend
+            await API.post("/payment/verify", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            // Step 4: Create order record after successful verification
+            await OrderService.createOrder(
+              cartSubtotal,
+              cartTotal,
+              response.razorpay_payment_id,
+              "RAZORPAY"
+            );
+
+            setCartData({ ...cartData, items: [] });
+            setIsProcessing(false);
+            navigate("/cart/success", {
+              state: { fromPaymentPage: true },
+            });
+          } catch (verifyError) {
+            setIsProcessing(false);
+            setError({ message: "Payment verification failed. Please contact support." });
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            toast.error("Payment cancelled");
+            setIsProcessing(false);
           },
         },
-      });
-      if (result.error) {
-        setError(result.error);
-      }
+        theme: {
+          color: "#0a138b",
+        },
+      };
 
-      await stripe.confirmCardPayment(data.client_secret, {
-        payment_method: result.paymentMethod.id,
-      });
-
-      OrderService.createOrder(cartSubtotal, cartTotal, data.id, "STRIPE").then(() => {
-        setCartData({ ...cartData, items: [] });
+      // Step 2b: Open Razorpay checkout modal
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (response) => {
+        setError({ message: response.error.description || "Payment failed" });
         setIsProcessing(false);
-        navigate("/cart/success", {
-          state: {
-            fromPaymentPage: true,
-          },
-        });
       });
-    } catch (error) {
+      rzp.open();
+    } catch (err) {
       setIsProcessing(false);
-      // throw error
+      setError({ message: "Unable to initiate payment. Please try again." });
     }
   };
 
@@ -74,30 +95,24 @@ const PaymentForm = ({ previousStep, addressData, nextStep }) => {
     <div className="w-full md:w-1/2">
       <h1 className="text-3xl font-semibold text-center mb-2">Checkout</h1>
       <OrderSummary />
-      <h1 className="font-medium text-2xl">Pay with Stripe</h1>
-      <Elements stripe={stripePromise}>
-        <ElementsConsumer>
-          {({ stripe, elements }) => (
-            <form onSubmit={(e) => handleSubmit(e, elements, stripe)}>
-              <CardElement className="border py-2" />
-              {error && <HelperText valid={false}>{error.message}</HelperText>}
-              <div className="flex justify-between py-4">
-                <Button onClick={previousStep} layout="outline" size="small">
-                  Back
-                </Button>
-                <Button disabled={!stripe || isProcessing} type="submit" size="small">
-                  {isProcessing || !stripe ? (
-                    <PulseLoader size={10} color={"#0a138b"} />
-                  ) : (
-                    `Pay ${formatCurrency(cartSubtotal)}`
-                  )}
-                </Button>
-              </div>
-            </form>
+      <h1 className="font-medium text-2xl">Pay with Razorpay</h1>
+      {error && <HelperText valid={false}>{error.message}</HelperText>}
+      <div className="flex justify-between py-4">
+        <Button onClick={previousStep} layout="outline" size="small">
+          Back
+        </Button>
+        <Button
+          disabled={isProcessing}
+          onClick={handlePayment}
+          size="small"
+        >
+          {isProcessing ? (
+            <PulseLoader size={10} color={"#0a138b"} />
+          ) : (
+            `Pay ${formatCurrency(cartSubtotal)}`
           )}
-        </ElementsConsumer>
-      </Elements>
-      <PaystackBtn isProcessing={isProcessing} setIsProcessing={setIsProcessing} />
+        </Button>
+      </div>
     </div>
   );
 };
