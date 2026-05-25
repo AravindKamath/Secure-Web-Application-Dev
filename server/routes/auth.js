@@ -11,8 +11,10 @@ const {
   setupMfa,
   verifyMfa,
   loginMfa,
+  removeMfa,
 } = require("../controllers/auth.controller");
 const { authLimiter } = require("../middleware/rateLimiter");
+const verifyToken = require("../middleware/verifyToken");
 const validate = require("../middleware/validate");
 const {
   signupSchema,
@@ -38,6 +40,7 @@ router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 router.post("/refresh-token", refreshToken);
 router.post("/mfa/setup", authLimiter, validate(mfaSetupSchema), setupMfa);
 router.post("/mfa/verify", authLimiter, validate(mfaVerifySchema), verifyMfa);
+router.post("/mfa/remove", verifyToken, removeMfa);
 router.post("/login/mfa", authLimiter, validate(mfaLoginSchema), loginMfa);
 
 module.exports = router;

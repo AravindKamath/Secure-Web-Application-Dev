@@ -22,9 +22,9 @@ const isProduction = process.env.NODE_ENV === "production";
 /** HttpOnly, Secure, SameSite=Strict access token cookie (15 min) */
 const accessCookieOptions = {
   httpOnly: true,
-  secure: isProduction,          // HTTPS only in production
+  secure: isProduction, // HTTPS only in production
   sameSite: "Strict",
-  maxAge: 15 * 60 * 1000,        // 15 minutes in ms
+  maxAge: 15 * 60 * 1000, // 15 minutes in ms
   path: "/",
 };
 
@@ -34,7 +34,7 @@ const refreshCookieOptions = {
   secure: isProduction,
   sameSite: "Strict",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
-  path: "/api/auth/refresh-token",  // Scoped — only sent on refresh endpoint
+  path: "/api/auth/refresh-token", // Scoped — only sent on refresh endpoint
 };
 
 /** Clear cookie options (expire immediately) */
@@ -69,7 +69,11 @@ const loginUser = async (req, res) => {
   const authResponse = await authService.login(email, password);
 
   if (authResponse.mfaRequired) {
-    logger.info({ event: "LOGIN_MFA_REQUIRED", userId: authResponse.user.user_id, ip: req.ip });
+    logger.info({
+      event: "LOGIN_MFA_REQUIRED",
+      userId: authResponse.user.user_id,
+      ip: req.ip,
+    });
     return res.status(200).json({
       status: "mfa_required",
       mfa_required: true,
@@ -80,7 +84,11 @@ const loginUser = async (req, res) => {
 
   setAuthCookies(res, authResponse.token, authResponse.refreshToken);
 
-  logger.info({ event: "LOGIN_SUCCESS", userId: authResponse.user.user_id, ip: req.ip });
+  logger.info({
+    event: "LOGIN_SUCCESS",
+    userId: authResponse.user.user_id,
+    ip: req.ip,
+  });
 
   res.status(200).json({ status: "success", user: authResponse.user });
 };
@@ -92,7 +100,11 @@ const googleLogin = async (req, res) => {
 
     setAuthCookies(res, token, refreshToken);
 
-    logger.info({ event: "GOOGLE_LOGIN_SUCCESS", userId: user.user_id, ip: req.ip });
+    logger.info({
+      event: "GOOGLE_LOGIN_SUCCESS",
+      userId: user.user_id,
+      ip: req.ip,
+    });
 
     res.json({ status: "success", user });
   } catch (error) {
@@ -101,10 +113,10 @@ const googleLogin = async (req, res) => {
       message: error.message,
       stack: error.stack,
       body: {
-        code: req.body?.code ? "*** REDACTED_CODE ***" : undefined
-      }
+        code: req.body?.code ? "*** REDACTED_CODE ***" : undefined,
+      },
     });
-    
+
     console.error("Google Auth Error:", error.message);
     console.error("Stack Trace:", error.stack);
 
@@ -127,7 +139,11 @@ const logoutUser = async (req, res) => {
   res.clearCookie("accessToken", clearAccessCookie);
   res.clearCookie("refreshToken", clearRefreshCookie);
 
-  logger.info({ event: "LOGOUT_SUCCESS", userId: req.user?.id ?? "anonymous", ip: req.ip });
+  logger.info({
+    event: "LOGOUT_SUCCESS",
+    userId: req.user?.id ?? "anonymous",
+    ip: req.ip,
+  });
 
   res.json({ status: "success", message: "Logged out successfully" });
 };
@@ -161,7 +177,11 @@ const refreshToken = async (req, res) => {
   const rawRefreshToken = req.cookies?.refreshToken;
 
   if (!rawRefreshToken) {
-    logger.warn({ event: "REFRESH_FAILURE", reason: "No refresh cookie", ip: req.ip });
+    logger.warn({
+      event: "REFRESH_FAILURE",
+      reason: "No refresh cookie",
+      ip: req.ip,
+    });
     throw new ErrorHandler(401, "Refresh token missing");
   }
 
@@ -188,13 +208,45 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const removeMfa = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ status: "error", message: "Unauthorized" });
+    }
+
+    await authService.removeMfa(userId);
+    logger.info({ event: "MFA_REMOVE_SUCCESS", userId, ip: req.ip });
+    res
+      .status(200)
+      .json({ status: "success", message: "MFA disabled successfully" });
+  } catch (error) {
+    logger.error({
+      event: "MFA_REMOVE_ERROR",
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(error.statusCode || 500).json({
+      status: "error",
+      message: error.statusCode ? error.message : "Internal Server Error",
+    });
+  }
+};
+
 const setupMfa = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const { qrCodeDataUrl, otpauthUrl } = await authService.initMfaSetup(email, password);
+    const { qrCodeDataUrl, otpauthUrl } = await authService.initMfaSetup(
+      email,
+      password
+    );
     res.status(200).json({ status: "success", qrCodeDataUrl, otpauthUrl });
   } catch (error) {
-    logger.error({ event: "MFA_SETUP_ERROR", message: error.message, stack: error.stack });
+    logger.error({
+      event: "MFA_SETUP_ERROR",
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(error.statusCode || 500).json({
       status: "error",
       message: error.statusCode ? error.message : "Internal Server Error",
@@ -208,7 +260,11 @@ const verifyMfa = async (req, res) => {
     await authService.verifyMfaSetup(email, password, code);
     res.status(200).json({ status: "success", message: "MFA enabled" });
   } catch (error) {
-    logger.error({ event: "MFA_VERIFY_ERROR", message: error.message, stack: error.stack });
+    logger.error({
+      event: "MFA_VERIFY_ERROR",
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(error.statusCode || 500).json({
       status: "error",
       message: error.statusCode ? error.message : "Internal Server Error",
@@ -219,15 +275,26 @@ const verifyMfa = async (req, res) => {
 const loginMfa = async (req, res) => {
   try {
     const { mfa_token, code } = req.body;
-    const { token, refreshToken, user } = await authService.loginMfa(mfa_token, code);
+    const { token, refreshToken, user } = await authService.loginMfa(
+      mfa_token,
+      code
+    );
 
     setAuthCookies(res, token, refreshToken);
 
-    logger.info({ event: "LOGIN_MFA_SUCCESS", userId: user.user_id, ip: req.ip });
+    logger.info({
+      event: "LOGIN_MFA_SUCCESS",
+      userId: user.user_id,
+      ip: req.ip,
+    });
 
     res.status(200).json({ status: "success", user });
   } catch (error) {
-    logger.error({ event: "LOGIN_MFA_ERROR", message: error.message, stack: error.stack });
+    logger.error({
+      event: "LOGIN_MFA_ERROR",
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(error.statusCode || 500).json({
       status: "error",
       message: error.statusCode ? error.message : "Internal Server Error",
@@ -247,4 +314,5 @@ module.exports = {
   setupMfa,
   verifyMfa,
   loginMfa,
+  removeMfa,
 };

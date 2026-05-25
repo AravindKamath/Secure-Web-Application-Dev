@@ -31,6 +31,8 @@ const Account = () => {
   const [mfaVerifyCode, setMfaVerifyCode] = useState("");
   const [mfaVerifyError, setMfaVerifyError] = useState("");
   const [mfaVerifyLoading, setMfaVerifyLoading] = useState(false);
+  const [isRemoveMfaOpen, setIsRemoveMfaOpen] = useState(false);
+  const [isRemoveMfaLoading, setIsRemoveMfaLoading] = useState(false);
 
   const resetPassword = () => {
     setIsSending(true);
@@ -65,6 +67,21 @@ const Account = () => {
     setMfaSetupLoading(false);
     setMfaVerifyLoading(false);
     setMfaSetupPassword("");
+  };
+
+  const handleRemoveMfa = async () => {
+    try {
+      setIsRemoveMfaLoading(true);
+      await authService.removeMfa();
+      toast.success("MFA disabled. Please log in again.");
+      setIsRemoveMfaOpen(false);
+      // window.location.href = "/";
+    } catch (error) {
+      const res = error.response;
+      toast.error(res?.data?.message || "Unable to disable MFA");
+    } finally {
+      setIsRemoveMfaLoading(false);
+    }
   };
 
   const handleMfaSetup = async (event) => {
@@ -165,9 +182,26 @@ const Account = () => {
                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Multi-factor authentication</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    <Button disabled={!userData?.email} onClick={openMfaSetup}>
-                      Enable MFA
-                    </Button>
+                    {userData?.is_mfa_enabled ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-green-600">✓ Enabled</p>
+                        <Button
+                          disabled={isRemoveMfaLoading}
+                          onClick={() => setIsRemoveMfaOpen(true)}
+                          className="w-fit"
+                        >
+                          {isRemoveMfaLoading ? (
+                            <PulseLoader size={10} color={"#01A982"} />
+                          ) : (
+                            "Disable MFA"
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button disabled={!userData?.email} onClick={openMfaSetup}>
+                        Enable MFA
+                      </Button>
+                    )}
                   </dd>
                 </div>
                 <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -205,7 +239,27 @@ const Account = () => {
           </div>
         </div>
       )}
-      {isMfaSetupOpen && <Backdrop />}
+      {(isMfaSetupOpen || isRemoveMfaOpen) && <Backdrop />}
+      <Modal isOpen={isRemoveMfaOpen} onClose={() => setIsRemoveMfaOpen(false)}>
+        <ModalHeader>Disable Multi-factor Authentication</ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-gray-700">
+            Are you sure you want to disable MFA? Your account will be less secure.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            layout="outline"
+            onClick={() => setIsRemoveMfaOpen(false)}
+            disabled={isRemoveMfaLoading}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleRemoveMfa} disabled={isRemoveMfaLoading}>
+            {isRemoveMfaLoading ? <PulseLoader size={10} color={"#01A982"} /> : "Disable"}
+          </Button>
+        </ModalFooter>
+      </Modal>
       <Modal isOpen={isMfaSetupOpen} onClose={closeMfaSetup}>
         <ModalHeader>Enable MFA</ModalHeader>
         <ModalBody>
@@ -227,22 +281,14 @@ const Account = () => {
               )}
               <ModalFooter>
                 <Button type="submit" disabled={mfaSetupLoading}>
-                  {mfaSetupLoading ? (
-                    <PulseLoader size={10} color={"#01A982"} />
-                  ) : (
-                    "Generate QR"
-                  )}
+                  {mfaSetupLoading ? <PulseLoader size={10} color={"#01A982"} /> : "Generate QR"}
                 </Button>
               </ModalFooter>
             </form>
           ) : (
             <form onSubmit={handleMfaVerify}>
               <div className="flex flex-col items-center">
-                <img
-                  src={mfaQrCode}
-                  alt="MFA QR code"
-                  className="h-40 w-40"
-                />
+                <img src={mfaQrCode} alt="MFA QR code" className="h-40 w-40" />
                 {mfaOtpAuthUrl && (
                   <p className="text-xs mt-2 break-all text-center">{mfaOtpAuthUrl}</p>
                 )}

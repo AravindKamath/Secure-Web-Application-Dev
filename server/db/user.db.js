@@ -100,6 +100,17 @@ const enableUserMfaDb = async (userId) => {
   return rows[0];
 };
 
+const disableUserMfaDb = async (userId) => {
+  const { rows } = await pool.query(
+    `UPDATE users 
+     SET is_mfa_enabled = $1, mfa_secret_enc = NULL, mfa_secret_iv = NULL, mfa_secret_tag = NULL 
+     WHERE user_id = $2 
+     RETURNING user_id, is_mfa_enabled`,
+    [false, userId]
+  );
+  return rows[0];
+};
+
 module.exports = {
   getAllUsersDb,
   getUserByIdDb,
@@ -112,4 +123,5 @@ module.exports = {
   changeUserPasswordDb,
   setUserMfaSecretDb,
   enableUserMfaDb,
+  disableUserMfaDb,
 };

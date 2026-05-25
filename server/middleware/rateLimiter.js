@@ -9,7 +9,7 @@ const rateLimit = require("express-rate-limit");
 const { logger } = require("../utils/logger");
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 5 * 60 * 1000, // 15 minutes
   max: 100,
   standardHeaders: true,  // Return rate limit info in RateLimit-* headers
   legacyHeaders: false,   // Disable X-RateLimit-* headers
@@ -30,7 +30,7 @@ const globalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 5 * 60 * 1000, // 15 minutes
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
