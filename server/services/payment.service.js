@@ -2,10 +2,23 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const { ErrorHandler } = require("../helpers/error");
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Lazy initialize Razorpay only if credentials are provided
+let razorpay = null;
+
+const initRazorpay = () => {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.warn("[Payment] Razorpay credentials not set - payments disabled");
+    return null;
+  }
+  
+  if (!razorpay) {
+    razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+  }
+  return razorpay;
+};
 
 class PaymentService {
   /**
@@ -16,12 +29,17 @@ class PaymentService {
    */
   createOrder = async (amount, currency = "INR") => {
     try {
+      const client = initRazorpay();
+      if (!client) {
+        throw new ErrorHandler(503, "Payment service is not configured");
+      }
+
       const options = {
         amount,
         currency,
         receipt: `order_${Date.now()}`,
       };
-      return await razorpay.orders.create(options);
+      return await client.orders.create(options);
     } catch (error) {
       throw new ErrorHandler(error.statusCode || 500, error.error?.description || error.message);
     }
@@ -38,6 +56,10 @@ class PaymentService {
    * @throws {ErrorHandler} if verification fails
    */
   verifyPayment = (razorpay_order_id, razorpay_payment_id, razorpay_signature) => {
+    if (!process.env.RAZORPAY_KEY_SECRET) {
+      throw new ErrorHandler(503, "Payment service is not configured");
+    }
+
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)

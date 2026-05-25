@@ -61,7 +61,7 @@ fi
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║         PERN-Store — Linux Host Hardening (Phase 3)                ║"
+echo "║         PERN-Store — Linux Host Hardening (Phase 3)                  ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 

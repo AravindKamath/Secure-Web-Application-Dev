@@ -35,6 +35,7 @@ const {
   getUserByIdDb,
   setUserMfaSecretDb,
   enableUserMfaDb,
+  disableUserMfaDb,
 } = require("../db/user.db");
 const { createCartDb } = require("../db/cart.db");
 const mail = require("./mail.service");
@@ -366,21 +367,12 @@ class AuthService {
   // ── MFA Setup ───────────────────────────────────────────────────────────
 
   async initMfaSetup(email, password) {
-    if (!isBasicInputValid(email, password)) {
-      logger.warn({ event: "MFA_SETUP_FAILURE", reason: "Invalid input", email });
-      throw new ErrorHandler(401, "Invalid credentials");
-    }
-
     const user = await getUserByEmailDb(email);
     if (!user) {
-      await bcrypt.hash(password, BCRYPT_ROUNDS);
+      // Constant-time guard: hash anyway to prevent timing attacks
+      if (password) await bcrypt.hash(password, BCRYPT_ROUNDS);
       logger.warn({ event: "MFA_SETUP_FAILURE", reason: "Email not found", email });
-      throw new ErrorHandler(401, "Email or password incorrect");
-    }
-
-    if (user.google_id && !user.password) {
-      logger.warn({ event: "MFA_SETUP_FAILURE", reason: "Google-only account", email });
-      throw new ErrorHandler(403, "Please log in with Google");
+      throw new ErrorHandler(401, "Email not found");
     }
 
     if (user.is_mfa_enabled) {
@@ -388,10 +380,21 @@ class AuthService {
       throw new ErrorHandler(400, "MFA is already enabled for this account");
     }
 
-    const isCorrectPassword = await bcrypt.compare(password, user.password);
-    if (!isCorrectPassword) {
-      logger.warn({ event: "MFA_SETUP_FAILURE", reason: "Wrong password", userId: user.user_id });
-      throw new ErrorHandler(401, "Email or password incorrect");
+    // Google OAuth users skip password verification
+    if (user.google_id && !user.password) {
+      logger.info({ event: "MFA_SETUP_ISSUED_GOOGLE", userId: user.user_id });
+    } else {
+      // Password-based users require password verification
+      if (!isBasicInputValid(email, password)) {
+        logger.warn({ event: "MFA_SETUP_FAILURE", reason: "Invalid input", email });
+        throw new ErrorHandler(401, "Invalid credentials");
+      }
+
+      const isCorrectPassword = await bcrypt.compare(password, user.password);
+      if (!isCorrectPassword) {
+        logger.warn({ event: "MFA_SETUP_FAILURE", reason: "Wrong password", userId: user.user_id });
+        throw new ErrorHandler(401, "Email or password incorrect");
+      }
     }
 
     const secret = speakeasy.generateSecret({
@@ -410,21 +413,12 @@ class AuthService {
   }
 
   async verifyMfaSetup(email, password, code) {
-    if (!isBasicInputValid(email, password)) {
-      logger.warn({ event: "MFA_VERIFY_FAILURE", reason: "Invalid input", email });
-      throw new ErrorHandler(401, "Invalid credentials");
-    }
-
     const user = await getUserByEmailDb(email);
     if (!user) {
-      await bcrypt.hash(password, BCRYPT_ROUNDS);
+      // Constant-time guard: hash anyway to prevent timing attacks
+      if (password) await bcrypt.hash(password, BCRYPT_ROUNDS);
       logger.warn({ event: "MFA_VERIFY_FAILURE", reason: "Email not found", email });
-      throw new ErrorHandler(401, "Email or password incorrect");
-    }
-
-    if (user.google_id && !user.password) {
-      logger.warn({ event: "MFA_VERIFY_FAILURE", reason: "Google-only account", email });
-      throw new ErrorHandler(403, "Please log in with Google");
+      throw new ErrorHandler(401, "Email not found");
     }
 
     if (user.is_mfa_enabled) {
@@ -432,10 +426,21 @@ class AuthService {
       throw new ErrorHandler(400, "MFA is already enabled for this account");
     }
 
-    const isCorrectPassword = await bcrypt.compare(password, user.password);
-    if (!isCorrectPassword) {
-      logger.warn({ event: "MFA_VERIFY_FAILURE", reason: "Wrong password", userId: user.user_id });
-      throw new ErrorHandler(401, "Email or password incorrect");
+    // Google OAuth users skip password verification
+    if (user.google_id && !user.password) {
+      logger.info({ event: "MFA_VERIFY_ISSUED_GOOGLE", userId: user.user_id });
+    } else {
+      // Password-based users require password verification
+      if (!isBasicInputValid(email, password)) {
+        logger.warn({ event: "MFA_VERIFY_FAILURE", reason: "Invalid input", email });
+        throw new ErrorHandler(401, "Invalid credentials");
+      }
+
+      const isCorrectPassword = await bcrypt.compare(password, user.password);
+      if (!isCorrectPassword) {
+        logger.warn({ event: "MFA_VERIFY_FAILURE", reason: "Wrong password", userId: user.user_id });
+        throw new ErrorHandler(401, "Email or password incorrect");
+      }
     }
 
     if (!user.mfa_secret_enc || !user.mfa_secret_iv || !user.mfa_secret_tag) {
@@ -463,6 +468,26 @@ class AuthService {
 
     await enableUserMfaDb(user.user_id);
     logger.info({ event: "MFA_ENABLED", userId: user.user_id });
+
+    return true;
+  }
+
+  // ── MFA Disable ────────────────────────────────────────────────────────────
+
+  async removeMfa(userId) {
+    const user = await getUserByIdDb(userId);
+    if (!user) {
+      logger.warn({ event: "MFA_REMOVE_FAILURE", reason: "User not found", userId });
+      throw new ErrorHandler(404, "User not found");
+    }
+
+    if (!user.is_mfa_enabled) {
+      logger.warn({ event: "MFA_REMOVE_FAILURE", reason: "MFA not enabled", userId });
+      throw new ErrorHandler(400, "MFA is not enabled for this account");
+    }
+
+    await disableUserMfaDb(userId);
+    logger.info({ event: "MFA_DISABLED", userId });
 
     return true;
   }

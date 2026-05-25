@@ -66,6 +66,10 @@ class AuthService {
     }).then(({ data }) => data);
   }
 
+  removeMfa() {
+    return API.post("/auth/mfa/remove").then(({ data }) => data);
+  }
+
   register(username, email, password) {
     return API.post("/auth/signup", {
       username,

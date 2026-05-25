@@ -44,7 +44,7 @@ const Register = () => {
         .catch(({ response }) => {
           setIsLoading(false);
           if (response?.data?.errors && response.data.errors.length > 0) {
-            setError(response.data.errors.map(err => err.message).join(", "));
+            setError(response.data.errors.map((err) => err.message).join(", "));
           } else {
             setError(response?.data?.message || "An error occurred");
           }
