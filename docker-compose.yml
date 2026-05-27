@@ -78,7 +78,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - ./server/.env.production.local
+      - ./server/.env
     # NO port mappings — only accessible via nginx on frontend-net
     # The API listens on port 9000 internally (set via PORT in .env.production)
     expose:
@@ -111,7 +111,7 @@ services:
     container_name: pern-prod-db
     restart: unless-stopped
     env_file:
-      - ./server/.env.production.local
+      - ./server/.env
     # NO port mappings — only accessible from api on backend-net
     # PostgreSQL binds to the internal Docker network interface only
     expose:
