@@ -79,6 +79,23 @@ services:
     restart: unless-stopped
     env_file:
       - ./server/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=9000
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=pernstore
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_SSL=false
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      # ⚠️ AWS DEPLOYMENT: Update this to your actual EC2 public IP or domain
+      - ALLOWED_ORIGINS=http://13.126.117.114,http://localhost
+      # ⚠️ AWS DEPLOYMENT: Update this to your actual EC2 public IP or domain
+      - CLIENT_URL=http://13.126.117.114:80
+      - SMTP_FROM="Vantage Support <kamatharavind28@gmail.com>"
+      - SMTP_USER=kamatharavind28@gmail.com
+      - LOG_LEVEL=info
     # NO port mappings — only accessible via nginx on frontend-net
     # The API listens on port 9000 internally (set via PORT in .env.production)
     expose:
