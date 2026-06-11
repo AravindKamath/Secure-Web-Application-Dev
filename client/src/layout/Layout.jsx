@@ -8,10 +8,7 @@ const Layout = ({ children, title, loading }) => {
       <Helmet>
         <meta charSet="utf-8" />
         <title>{title ?? "Home"} | Vantage </title>
-        <meta
-          name="description"
-          content="Vantage Marketplace - Premium e-commerce experience"
-        />
+        <meta name="description" content="Vantage Marketplace - Premium e-commerce experience" />
         <meta
           name="robots"
           content="max-snippet:-1, max-image-preview:large, max-video-preview:-1"

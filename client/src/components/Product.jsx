@@ -48,11 +48,7 @@ const Product = ({ product }) => {
               onClick={(e) => addToCart(e)}
               className="pointer-events-auto w-full rounded-xl bg-neutral-900 text-white shadow-lg hover:bg-neutral-800"
             >
-              {isLoading ? (
-                <ClipLoader size={16} color="#ffffff" />
-              ) : (
-                "Add to Cart"
-              )}
+              {isLoading ? <ClipLoader size={16} color="#ffffff" /> : "Add to Cart"}
             </Button>
           </div>
         </div>
@@ -63,9 +59,7 @@ const Product = ({ product }) => {
           </h3>
 
           <div className="flex items-center justify-between">
-            <p className="text-base font-semibold text-gray-900">
-              {formatCurrency(product.price)}
-            </p>
+            <p className="text-base font-semibold text-gray-900">{formatCurrency(product.price)}</p>
 
             <Button
               size="small"
