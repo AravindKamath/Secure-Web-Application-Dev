@@ -136,183 +136,312 @@ const Account = () => {
     }
   };
 
+  const displayValue = (value) => {
+    return value && value.toString().trim() !== "" ? value : "Not provided";
+  };
+
   return (
     <Layout title="Profile" loading={userData === null}>
       {showSettings ? (
         <AccountForm userData={userData} setShowSettings={setShowSettings} />
       ) : (
-        <div className="grid place-items-center pt-4 mt-10">
-          <div className="w-full md:w-3/4 lg:w-1/2 shadow-md overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Profile</h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">Your personal information</p>
-            </div>
-            <div className="border-t border-gray-200">
-              <dl>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Full name</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {userData?.fullname}
-                  </dd>
+        <div className="w-full min-h-[85vh] bg-white text-black transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden rounded-3xl animate-fade-in">
+          {/* Background glow matching Vantage theme */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,0,0,0.03),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_60%)] pointer-events-none" />
+
+          <div className="relative w-full max-w-4xl z-10">
+            <div className="rounded-3xl border border-neutral-200/80 bg-white/70 p-8 md:p-10 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/60 flex flex-col gap-8 transition-all duration-300 hover:border-neutral-300 dark:hover:border-white/20">
+              
+              {/* Top Profile Section */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 pb-8 border-b border-neutral-200/60 dark:border-neutral-800/60">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 flex items-center justify-center text-white text-3xl sm:text-4xl font-extrabold shadow-lg uppercase select-none ring-4 ring-emerald-500/10 dark:ring-emerald-500/20 transition-transform duration-300 hover:rotate-12">
+                  {userData?.username?.[0] || userData?.fullname?.[0] || "?"}
                 </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Username</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {userData?.username}
-                  </dd>
-                </div>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Email address</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {userData?.email}
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Password</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    <Button disabled={isSending} onClick={resetPassword}>
-                      {isSending ? (
-                        <PulseLoader color={"#01A982"} size={10} />
-                      ) : (
-                        "Reset password by email"
-                      )}
-                    </Button>
-                  </dd>
-                </div>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Multi-factor authentication</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1.5">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                    <h2 className="text-2xl sm:text-3xl font-black text-neutral-955 dark:text-white tracking-tight">
+                      {userData?.fullname}
+                    </h2>
                     {userData?.is_mfa_enabled ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-sm font-medium text-green-600">✓ Enabled</p>
+                      <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-100/85 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-205 dark:border-emerald-900/50">
+                        MFA Enabled
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold bg-neutral-150 text-neutral-600 dark:bg-neutral-800/50 dark:text-emerald-400 border border-neutral-200/60 dark:border-neutral-700/50">
+                        MFA Disabled
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-450">
+                    {userData?.username ? `@${userData.username}` : "Not provided"}
+                  </p>
+                  <p className="text-sm text-neutral-400 dark:text-neutral-550">
+                    {userData?.email}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sections Container */}
+              <div className="flex flex-col gap-10">
+                
+                {/* SECTION 1: PERSONAL INFORMATION */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-xs font-extrabold uppercase tracking-widest text-neutral-400 dark:text-neutral-550">
+                    Personal Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30">
+                      <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-500">Full Name</span>
+                      <span className="text-sm font-medium text-neutral-850 dark:text-neutral-200">
+                        {displayValue(userData?.fullname)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30">
+                      <span className="text-xs font-semibold text-neutral-455 dark:text-neutral-500">Username</span>
+                      <span className="text-sm font-medium text-neutral-850 dark:text-neutral-200">
+                        {userData?.username ? `@${userData.username}` : "Not provided"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30">
+                      <span className="text-xs font-semibold text-neutral-455 dark:text-neutral-500">Email Address</span>
+                      <span className="text-sm font-medium text-neutral-850 dark:text-neutral-200">
+                        {displayValue(userData?.email)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION 2: SECURITY */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-xs font-extrabold uppercase tracking-widest text-neutral-400 dark:text-neutral-550">
+                    Security Settings
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Password Reset */}
+                    <div className="flex flex-col gap-5 p-5 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 justify-between transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30">
+                      <div>
+                        <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-500">Password</span>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                          Request a secure password reset link sent directly to your inbox.
+                        </p>
+                      </div>
+                      <Button
+                        disabled={isSending}
+                        onClick={resetPassword}
+                        className="w-full sm:w-fit px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900 font-semibold text-sm text-neutral-700 dark:text-neutral-300 transition-all flex items-center justify-center gap-2"
+                      >
+                        {isSending ? (
+                          <PulseLoader color={"currentColor"} size={8} />
+                        ) : (
+                          "Reset Password by Email"
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* MFA Section */}
+                    <div className="flex flex-col gap-5 p-5 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 justify-between transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-500">Multi-Factor Authentication</span>
+                          {userData?.is_mfa_enabled && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-405 border border-emerald-250 dark:border-emerald-900/50">
+                              ✓ Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                          Add an extra layer of security to prevent unauthorized access.
+                        </p>
+                      </div>
+                      
+                      {userData?.is_mfa_enabled ? (
                         <Button
                           disabled={isRemoveMfaLoading}
                           onClick={() => setIsRemoveMfaOpen(true)}
-                          className="w-fit"
+                          className="w-full sm:w-fit px-5 py-2.5 rounded-xl border border-red-205 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold text-sm transition-all flex items-center justify-center gap-2"
                         >
                           {isRemoveMfaLoading ? (
-                            <PulseLoader size={10} color={"#01A982"} />
+                            <PulseLoader size={8} color={"currentColor"} />
                           ) : (
                             "Disable MFA"
                           )}
                         </Button>
-                      </div>
-                    ) : (
-                      <Button disabled={!userData?.email} onClick={openMfaSetup}>
-                        Enable MFA
-                      </Button>
-                    )}
-                  </dd>
+                      ) : (
+                        <Button
+                          disabled={!userData?.email}
+                          onClick={openMfaSetup}
+                          className="w-full sm:w-fit px-5 py-2.5 rounded-xl bg-[#01A982] text-white hover:bg-[#019371] font-semibold text-sm shadow transition-all duration-300 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2"
+                        >
+                          Enable MFA
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Address</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {userData?.address}
-                  </dd>
+
+                {/* SECTION 3: ADDRESS INFORMATION */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-xs font-extrabold uppercase tracking-widest text-neutral-400 dark:text-neutral-550">
+                    Address Information
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30 col-span-1 sm:col-span-2">
+                      <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-500">Address</span>
+                      <span className="text-sm font-medium text-neutral-850 dark:text-neutral-200 line-clamp-2">
+                        {displayValue(userData?.address)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30">
+                      <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-500">City</span>
+                      <span className="text-sm font-medium text-neutral-850 dark:text-neutral-200">
+                        {displayValue(userData?.city)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30">
+                      <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-500">State</span>
+                      <span className="text-sm font-medium text-neutral-850 dark:text-neutral-200">
+                        {displayValue(userData?.state)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/50 dark:bg-neutral-950/20 border border-neutral-200/60 dark:border-neutral-900/40 transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-950/30 md:col-span-2 lg:col-span-1">
+                      <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-500">Country</span>
+                      <span className="text-sm font-medium text-neutral-850 dark:text-neutral-200">
+                        {displayValue(userData?.country)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">City</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {userData?.city}
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">State</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {userData?.state}
-                  </dd>
-                </div>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Country</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {userData?.country}
-                  </dd>
-                </div>
-                <div className="bg-gray-50 px-4 py-5">
-                  <Button iconRight={Edit2} onClick={(e) => setShowSettings(!showSettings)}>
-                    {" "}
-                    Edit
-                  </Button>
-                </div>
-              </dl>
+
+              </div>
+
+              {/* Edit Profile Button */}
+              <div className="flex justify-end pt-6 border-t border-neutral-200/60 dark:border-neutral-800/60 mt-4">
+                <Button
+                  onClick={() => setShowSettings(true)}
+                  className="px-6 py-3.5 rounded-xl bg-[#01A982] text-white hover:bg-[#019371] font-semibold shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-95 flex items-center gap-2"
+                >
+                  <Edit2 size={16} />
+                  Edit Profile
+                </Button>
+              </div>
+
             </div>
           </div>
         </div>
       )}
       {(isMfaSetupOpen || isRemoveMfaOpen) && <Backdrop />}
       <Modal isOpen={isRemoveMfaOpen} onClose={() => setIsRemoveMfaOpen(false)}>
-        <ModalHeader>Disable Multi-factor Authentication</ModalHeader>
-        <ModalBody>
-          <p className="text-sm text-gray-700">
+        <ModalHeader className="text-lg font-bold text-neutral-955 dark:text-white">Disable Multi-factor Authentication</ModalHeader>
+        <ModalBody className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+          <p>
             Are you sure you want to disable MFA? Your account will be less secure.
           </p>
         </ModalBody>
-        <ModalFooter>
+        <ModalFooter className="flex gap-3 justify-end mt-6">
           <Button
             layout="outline"
             onClick={() => setIsRemoveMfaOpen(false)}
             disabled={isRemoveMfaLoading}
+            className="px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-350 hover:bg-neutral-50 dark:hover:bg-neutral-900 font-semibold text-sm transition-all"
           >
             Cancel
           </Button>
-          <Button onClick={handleRemoveMfa} disabled={isRemoveMfaLoading}>
-            {isRemoveMfaLoading ? <PulseLoader size={10} color={"#01A982"} /> : "Disable"}
+          <Button 
+            onClick={handleRemoveMfa} 
+            disabled={isRemoveMfaLoading}
+            className="px-5 py-2.5 rounded-xl bg-red-650 text-white hover:bg-red-705 font-semibold shadow-md transition-all flex items-center justify-center min-w-[100px]"
+          >
+            {isRemoveMfaLoading ? <PulseLoader size={8} color={"#ffffff"} /> : "Disable"}
           </Button>
         </ModalFooter>
       </Modal>
       <Modal isOpen={isMfaSetupOpen} onClose={closeMfaSetup}>
-        <ModalHeader>Enable MFA</ModalHeader>
-        <ModalBody>
+        <ModalHeader className="text-lg font-bold text-neutral-955 dark:text-white">Enable MFA</ModalHeader>
+        <ModalBody className="mt-3">
           {!mfaQrCode ? (
-            <form onSubmit={handleMfaSetup}>
-              <Label>
-                <span className="font-semibold">Password</span>
+            <form onSubmit={handleMfaSetup} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                  <span>Password</span>
+                </Label>
                 <Input
-                  className="mt-1 border py-2 pl-2"
+                  className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-650 dark:focus:border-white dark:focus:ring-white transition duration-200"
                   type="password"
                   value={mfaSetupPassword}
                   onChange={(event) => setMfaSetupPassword(event.target.value)}
+                  placeholder="Enter your account password"
                 />
-              </Label>
+              </div>
               {mfaSetupError && (
-                <HelperText className="mt-2" valid={false}>
+                <HelperText className="text-xs italic text-red-500 dark:text-red-400" valid={false}>
                   {mfaSetupError}
                 </HelperText>
               )}
-              <ModalFooter>
-                <Button type="submit" disabled={mfaSetupLoading}>
-                  {mfaSetupLoading ? <PulseLoader size={10} color={"#01A982"} /> : "Generate QR"}
+              <ModalFooter className="flex justify-end gap-3 pt-4 border-t border-neutral-200/60 dark:border-neutral-800/60 mt-2">
+                <Button
+                  layout="outline"
+                  onClick={closeMfaSetup}
+                  disabled={mfaSetupLoading}
+                  className="px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-350 hover:bg-neutral-50 dark:hover:bg-neutral-900 font-semibold text-sm transition-all"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={mfaSetupLoading}
+                  className="px-5 py-2.5 rounded-xl bg-[#01A982] text-white hover:bg-[#019371] font-semibold shadow-md transition-all duration-300 hover:scale-[1.01] active:scale-95 flex items-center justify-center min-w-[120px]"
+                >
+                  {mfaSetupLoading ? <PulseLoader size={8} color={"#ffffff"} /> : "Generate QR"}
                 </Button>
               </ModalFooter>
             </form>
           ) : (
-            <form onSubmit={handleMfaVerify}>
-              <div className="flex flex-col items-center">
-                <img src={mfaQrCode} alt="MFA QR code" className="h-40 w-40" />
+            <form onSubmit={handleMfaVerify} className="flex flex-col gap-5">
+              <div className="flex flex-col items-center gap-3">
+                <div className="p-2 bg-white rounded-2xl border border-neutral-200 dark:border-neutral-800">
+                  <img src={mfaQrCode} alt="MFA QR code" className="h-44 w-44" />
+                </div>
                 {mfaOtpAuthUrl && (
-                  <p className="text-xs mt-2 break-all text-center">{mfaOtpAuthUrl}</p>
+                  <p className="text-xs mt-1 break-all text-center text-neutral-500 dark:text-neutral-405 max-w-sm">
+                    {mfaOtpAuthUrl}
+                  </p>
                 )}
               </div>
-              <Label className="mt-4">
-                <span className="font-semibold">MFA Code</span>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-semibold text-neutral-750 dark:text-neutral-350">
+                  <span>MFA Code</span>
+                </Label>
                 <Input
-                  className="mt-1 border py-2 pl-2"
+                  className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-650 dark:focus:border-white dark:focus:ring-white transition duration-200 text-center tracking-[0.2em] text-lg font-bold"
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
                   value={mfaVerifyCode}
                   onChange={(event) => setMfaVerifyCode(event.target.value)}
+                  placeholder="000000"
                 />
-              </Label>
+              </div>
               {mfaVerifyError && (
-                <HelperText className="mt-2" valid={false}>
+                <HelperText className="text-xs italic text-red-500 dark:text-red-400" valid={false}>
                   {mfaVerifyError}
                 </HelperText>
               )}
-              <ModalFooter>
-                <Button type="submit" disabled={mfaVerifyLoading}>
+              <ModalFooter className="flex justify-end gap-3 pt-4 border-t border-neutral-200/60 dark:border-neutral-800/60 mt-2">
+                <Button
+                  layout="outline"
+                  onClick={closeMfaSetup}
+                  disabled={mfaVerifyLoading}
+                  className="px-5 py-2.5 rounded-xl border border-neutral-205 dark:border-neutral-800 text-neutral-700 dark:text-neutral-355 hover:bg-neutral-50 dark:hover:bg-neutral-900 font-semibold text-sm transition-all"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={mfaVerifyLoading}
+                  className="px-5 py-2.5 rounded-xl bg-[#01A982] text-white hover:bg-[#019371] font-semibold shadow-md transition-all duration-300 hover:scale-[1.01] active:scale-95 flex items-center justify-center min-w-[150px]"
+                >
                   {mfaVerifyLoading ? (
-                    <PulseLoader size={10} color={"#01A982"} />
+                    <PulseLoader size={8} color={"#ffffff"} />
                   ) : (
                     "Verify and Enable"
                   )}

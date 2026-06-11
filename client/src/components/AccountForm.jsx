@@ -5,7 +5,11 @@ import { useForm } from "react-hook-form";
 import PulseLoader from "react-spinners/PulseLoader";
 
 const AccountForm = ({ setShowSettings, userData }) => {
-  const { register, handleSubmit } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     defaultValues: {
       fullname: userData?.fullname,
       email: userData?.email,
@@ -29,98 +33,174 @@ const AccountForm = ({ setShowSettings, userData }) => {
       setIsSaving(false);
     } catch (error) {
       setIsSaving(false);
-      setValidationError(error.response.data.message);
+      setValidationError(error.response?.data?.message);
     }
   };
 
   return (
-    <section className="grid place-items-center pt-4 mt-10">
-      <div className="w-full md:w-1/2 shadow-md overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 capitalize">
-            Account settings
-          </h3>
-        </div>
+    <div className="w-full min-h-[80vh] bg-white text-black transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-white flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden rounded-3xl">
+      {/* Background glow matching Vantage theme */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,0,0,0.03),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_60%)] pointer-events-none" />
+
+      <div className="relative w-full max-w-2xl z-10">
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="border-t border-gray-200 grid grid-cols-1"
+          className="rounded-3xl border border-neutral-200/80 bg-white/70 p-8 md:p-10 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/60 flex flex-col gap-6 transition-all duration-300 hover:border-neutral-300 dark:hover:border-white/20"
         >
-          <Label className="bg-gray-50 px-4 py-5">
-            <span className="text-sm font-medium text-gray-500 w-1/4">Full name</span>
-            <Input
-              name="fullname"
-              {...register("fullname")}
-              className="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring"
-            />
-          </Label>
-          <Label className="bg-white px-4 py-5 ">
-            <span className="text-sm font-medium text-gray-500">Username</span>
-            <Input
-              name="username"
-              {...register("username")}
-              className="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring"
-            />
-            {validationError && <HelperText valid={false}>{validationError.username}</HelperText>}
-          </Label>
-          <div className="bg-gray-50 px-4 py-5 ">
-            <span className="text-sm font-medium text-gray-500">Email address</span>
-            <Input
-              name="email"
-              {...register("email", {
-                required: "Email required",
-                pattern: {
-                  // eslint-disable-next-line no-useless-escape
-                  value: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
-                  message: "Email not valid",
-                },
-              })}
-              className="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring"
-            />
-            {validationError && <HelperText valid={false}>{validationError.email}</HelperText>}
+          {/* Header */}
+          <div className="mb-2">
+            <h2 className="text-2xl font-extrabold tracking-tight text-neutral-950 dark:text-white sm:text-3xl">
+              Edit Profile
+            </h2>
+            <p className="mt-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+              Update your personal information
+            </p>
           </div>
-          <div className="bg-white px-4 py-5 ">
-            <span className="text-sm font-medium text-gray-500">Address</span>
-            <Input
-              name="address"
-              {...register("address")}
-              className="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring"
-            />
+
+          {/* Form Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            
+            {/* Full Name */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-semibold text-neutral-705 dark:text-neutral-300">
+                <span>Full Name</span>
+              </Label>
+              <Input
+                name="fullname"
+                {...register("fullname")}
+                placeholder="Enter your full name"
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-600 dark:focus:border-white dark:focus:ring-white transition duration-200"
+              />
+            </div>
+
+            {/* Username */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-semibold text-neutral-705 dark:text-neutral-300">
+                <span>Username</span>
+              </Label>
+              <Input
+                name="username"
+                {...register("username")}
+                placeholder="Enter your username"
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-600 dark:focus:border-white dark:focus:ring-white transition duration-200"
+              />
+              {validationError?.username && (
+                <HelperText className="mt-1 text-xs italic text-red-500 dark:text-red-400" valid={false}>
+                  {validationError.username}
+                </HelperText>
+              )}
+            </div>
+
+            {/* Email */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-semibold text-neutral-705 dark:text-neutral-300">
+                <span>Email Address</span>
+              </Label>
+              <Input
+                name="email"
+                {...register("email", {
+                  required: "Email required",
+                  pattern: {
+                    // eslint-disable-next-line no-useless-escape
+                    value: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
+                    message: "Email not valid",
+                  },
+                })}
+                placeholder="Enter your email address"
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-600 dark:focus:border-white dark:focus:ring-white transition duration-200"
+              />
+              {errors.email && (
+                <HelperText className="mt-1 text-xs italic text-red-500 dark:text-red-400" valid={false}>
+                  {errors.email.message}
+                </HelperText>
+              )}
+              {validationError?.email && (
+                <HelperText className="mt-1 text-xs italic text-red-500 dark:text-red-400" valid={false}>
+                  {validationError.email}
+                </HelperText>
+              )}
+            </div>
+
+            {/* Address */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-semibold text-neutral-705 dark:text-neutral-300">
+                <span>Address</span>
+              </Label>
+              <Input
+                name="address"
+                {...register("address")}
+                placeholder="Street address"
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-600 dark:focus:border-white dark:focus:ring-white transition duration-200"
+              />
+            </div>
+
+            {/* City */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-semibold text-neutral-755 dark:text-neutral-300">
+                <span>City</span>
+              </Label>
+              <Input
+                name="city"
+                {...register("city")}
+                placeholder="City"
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-600 dark:focus:border-white dark:focus:ring-white transition duration-200"
+              />
+            </div>
+
+            {/* State */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-semibold text-neutral-755 dark:text-neutral-300">
+                <span>State</span>
+              </Label>
+              <Input
+                name="state"
+                {...register("state")}
+                placeholder="State / Province"
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-600 dark:focus:border-white dark:focus:ring-white transition duration-200"
+              />
+            </div>
+
+            {/* Country */}
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <Label className="text-sm font-semibold text-neutral-755 dark:text-neutral-300">
+                <span>Country</span>
+              </Label>
+              <Input
+                name="country"
+                {...register("country")}
+                placeholder="Country"
+                className="w-full px-4 py-3 text-sm rounded-xl border border-neutral-200 bg-white/50 text-neutral-900 placeholder-neutral-400 focus:border-black focus:ring-1 focus:ring-black focus:outline-none dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-white dark:placeholder-neutral-600 dark:focus:border-white dark:focus:ring-white transition duration-200"
+              />
+            </div>
+
           </div>
-          <div className="bg-gray-50 px-4 py-5 ">
-            <span className="text-sm font-medium text-gray-500">City</span>
-            <Input
-              name="city"
-              {...register("city")}
-              className="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring"
-            />
-          </div>
-          <div className="bg-white px-4 py-5 ">
-            <span className="text-sm font-medium text-gray-500">State</span>
-            <Input
-              name="state"
-              {...register("state")}
-              className="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring"
-            />
-          </div>
-          <div className="bg-gray-50 px-4 py-5 ">
-            <span className="text-sm font-medium text-gray-500">Country</span>
-            <Input
-              name="country"
-              {...register("country")}
-              className="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring"
-            />
-          </div>
-          <div className="px-4 py-5 space-x-4">
-            <Button disabled={isSaving} type="submit">
-              {isSaving ? <PulseLoader color={"#01A982"} size={10} loading={isSaving} /> : "Save"}
-            </Button>
-            <Button disabled={isSaving} onClick={() => setShowSettings(false)} layout="outline">
+
+          {/* Buttons */}
+          <div className="flex justify-end items-center gap-3 pt-6 border-t border-neutral-200/60 dark:border-neutral-800/60 mt-4">
+            <Button
+              disabled={isSaving}
+              onClick={() => setShowSettings(false)}
+              layout="outline"
+              className="px-6 py-3 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900 font-semibold text-sm transition-all focus:outline-none"
+            >
               Cancel
             </Button>
+            <Button
+              disabled={isSaving}
+              type="submit"
+              className="px-6 py-3 rounded-xl bg-[#01A982] text-white hover:bg-[#019371] font-semibold shadow-lg transition-all duration-300 hover:scale-[1.01] active:scale-95 focus:outline-none flex items-center justify-center gap-2 min-w-[140px]"
+            >
+              {isSaving ? (
+                <PulseLoader color={"#ffffff"} size={8} loading={isSaving} />
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
           </div>
+
         </form>
       </div>
-    </section>
+    </div>
   );
 };
 
