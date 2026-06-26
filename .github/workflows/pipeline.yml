@@ -202,9 +202,9 @@ jobs:
 
       - name: Scan vulnerabilities — API image
         run: |
-          grype sbom:artifacts/sbom/api.cdx.json \
+          grype artifacts/sbom/api.cdx.json \
             -o json  > artifacts/vulnerabilities/api-vulns.json
-          grype sbom:artifacts/sbom/api.cdx.json \
+          grype artifacts/sbom/api.cdx.json \
             -o table > artifacts/vulnerabilities/api-vulns.txt
 
       - name: Scan vulnerabilities — Client image
